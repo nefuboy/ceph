@@ -782,6 +782,8 @@ public:
     std::atomic<uint64_t> num_extents = {0};
     std::atomic<uint64_t> num_blobs = {0};
 
+    size_t last_trim_seq = 0;
+
     static Cache *create(string type, PerfCounters *logger);
 
     virtual ~Cache() {}
@@ -794,6 +796,9 @@ public:
     virtual void _rm_buffer(Buffer *b) = 0;
     virtual void _adjust_buffer_size(Buffer *b, int64_t delta) = 0;
     virtual void _touch_buffer(Buffer *b) = 0;
+
+    virtual uint64_t _get_num_onodes() = 0;
+    virtual uint64_t _get_buffer_bytes() = 0;
 
     void add_extent() {
       ++num_extents;
@@ -809,7 +814,10 @@ public:
       --num_blobs;
     }
 
-    virtual void trim(uint64_t onode_max, uint64_t buffer_max) = 0;
+    void trim(uint64_t target_bytes, float target_meta_ratio,
+	      float bytes_per_onode);
+
+    virtual void _trim(uint64_t onode_max, uint64_t buffer_max) = 0;
 
     virtual void add_stats(uint64_t *onodes, uint64_t *extents,
 			   uint64_t *blobs,
@@ -845,6 +853,9 @@ public:
     uint64_t buffer_size = 0;
 
   public:
+    uint64_t _get_num_onodes() override {
+      return onode_lru.size();
+    }
     void _add_onode(OnodeRef& o, int level) override {
       if (level > 0)
 	onode_lru.push_front(*o);
@@ -857,6 +868,9 @@ public:
     }
     void _touch_onode(OnodeRef& o) override;
 
+    uint64_t _get_buffer_bytes() override {
+      return buffer_size;
+    }
     void _add_buffer(Buffer *b, int level, Buffer *near) override {
       if (near) {
 	auto q = buffer_lru.iterator_to(*near);
@@ -885,7 +899,7 @@ public:
       _audit("_touch_buffer end");
     }
 
-    void trim(uint64_t onode_max, uint64_t buffer_max) override;
+    void _trim(uint64_t onode_max, uint64_t buffer_max) override;
 
     void add_stats(uint64_t *onodes, uint64_t *extents,
 		   uint64_t *blobs,
@@ -939,6 +953,9 @@ public:
     uint64_t buffer_list_bytes[BUFFER_TYPE_MAX] = {0}; ///< bytes per type
 
   public:
+    uint64_t _get_num_onodes() override {
+      return onode_lru.size();
+    }
     void _add_onode(OnodeRef& o, int level) override {
       if (level > 0)
 	onode_lru.push_front(*o);
@@ -951,6 +968,9 @@ public:
     }
     void _touch_onode(OnodeRef& o) override;
 
+    uint64_t _get_buffer_bytes() override {
+      return buffer_bytes;
+    }
     void _add_buffer(Buffer *b, int level, Buffer *near) override;
     void _rm_buffer(Buffer *b) override;
     void _adjust_buffer_size(Buffer *b, int64_t delta) override;
@@ -972,7 +992,7 @@ public:
       _audit("_touch_buffer end");
     }
 
-    void trim(uint64_t onode_max, uint64_t buffer_max) override;
+    void _trim(uint64_t onode_max, uint64_t buffer_max) override;
 
     void add_stats(uint64_t *onodes, uint64_t *extents,
 		   uint64_t *blobs,
@@ -1499,6 +1519,44 @@ private:
   CompressorRef compressor;
   std::atomic<uint64_t> comp_min_blob_size = {0};
   std::atomic<uint64_t> comp_max_blob_size = {0};
+
+  // cache trim control
+
+  // note that these update in a racy way, but we don't *really* care if
+  // they're perfectly accurate.  they are all word sized so they will
+  // individually update atomically, but may not be coherent with each other.
+  size_t mempool_seq = 0;
+  size_t mempool_bytes = 0;
+  size_t mempool_onodes = 0;
+
+  void get_mempool_stats(size_t *seq, uint64_t *bytes, uint64_t *onodes) {
+    *seq = mempool_seq;
+    *bytes = mempool_bytes;
+    *onodes = mempool_onodes;
+  }
+
+  struct MempoolThread : public Thread {
+    BlueStore *store;
+    Cond cond;
+    Mutex lock;
+    bool stop = false;
+  public:
+    explicit MempoolThread(BlueStore *s)
+      : store(s),
+	lock("BlueStore::MempoolThread::lock") {}
+    void *entry();
+    void init() {
+      assert(stop == false);
+      create("bstore_mempool");
+    }
+    void shutdown() {
+      lock.Lock();
+      stop = true;
+      cond.Signal();
+      lock.Unlock();
+      join();
+    }
+  } mempool_thread;
 
   // --------------------------------------------------------
   // private methods
