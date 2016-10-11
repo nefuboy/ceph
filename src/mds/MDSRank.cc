@@ -2416,6 +2416,8 @@ void MDSRank::check_ops_in_flight()
 void MDSRankDispatcher::handle_osd_map()
 {
   if (is_active() && snapserver) {
+    // TODO: I'm worried about emergent effects here with a bunch of maps being
+    // processed and spawning redundant MRemoveSnap messages during flapping
     snapserver->check_osd_map(true);
   }
 
