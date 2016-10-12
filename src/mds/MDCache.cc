@@ -9145,7 +9145,6 @@ void MDCache::do_realm_invalidate_and_update_notify(CInode *in, int snapop, bool
   bufferlist snapbl;
   in->snaprealm->build_snap_trace(snapbl);
 
-  set<SnapRealm*> past_children;
   map<client_t, MClientSnap*> updates;
   list<SnapRealm*> q;
   q.push_back(in->snaprealm);
@@ -9172,14 +9171,7 @@ void MDCache::do_realm_invalidate_and_update_notify(CInode *in, int snapop, bool
       }
     }
 
-    if (snapop == CEPH_SNAP_OP_UPDATE || snapop == CEPH_SNAP_OP_DESTROY) {
-      for (set<SnapRealm*>::iterator p = realm->open_past_children.begin();
-	   p != realm->open_past_children.end();
-	   ++p)
-	past_children.insert(*p);
-    }
-
-    // notify for active children, too.
+    // notify active children of changes
     dout(10) << " " << realm << " open_children are " << realm->open_children << dendl;
     for (set<SnapRealm*>::iterator p = realm->open_children.begin();
 	 p != realm->open_children.end();
@@ -9190,12 +9182,6 @@ void MDCache::do_realm_invalidate_and_update_notify(CInode *in, int snapop, bool
   if (!nosend)
     send_snaps(updates);
 
-  // notify past children and their descendants if we update/delete old snapshots
-  for (set<SnapRealm*>::iterator p = past_children.begin();
-       p !=  past_children.end();
-       ++p)
-    q.push_back(*p);
-
   while (!q.empty()) {
     SnapRealm *realm = q.front();
     q.pop_front();
@@ -9205,26 +9191,8 @@ void MDCache::do_realm_invalidate_and_update_notify(CInode *in, int snapop, bool
     for (set<SnapRealm*>::iterator p = realm->open_children.begin();
 	 p != realm->open_children.end();
 	 ++p) {
-      if (past_children.count(*p) == 0)
 	q.push_back(*p);
     }
-
-    for (set<SnapRealm*>::iterator p = realm->open_past_children.begin();
-	 p != realm->open_past_children.end();
-	 ++p) {
-      if (past_children.count(*p) == 0) {
-	q.push_back(*p);
-	past_children.insert(*p);
-      }
-    }
-  }
-
-  if (snapop == CEPH_SNAP_OP_DESTROY) {
-    // eval stray inodes if we delete snapshot from their past ancestor snaprealm
-    for (set<SnapRealm*>::iterator p = past_children.begin();
-	p != past_children.end();
-	++p)
-      maybe_eval_stray((*p)->inode, true);
   }
 }
 
@@ -12194,6 +12162,8 @@ void MDCache::notify_mdsmap_changed()
 void MDCache::notify_osdmap_changed()
 {
   stray_manager.update_op_limit();
+  // TODO: we can be waaay more efficient about this in many ways
+  stray_manager.try_purge_snaps();
 }
 
 void MDCache::handle_conf_change(const struct md_config_t *conf,
