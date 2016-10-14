@@ -63,7 +63,6 @@ public:
     bufferlist::iterator p = payload.begin();
     paxos_decode(p);
     ::decode(snaps, p);
-    assert(p.end());
     if (header.version >= 2) {
       ::decode(snap_seqs, p);
     }
