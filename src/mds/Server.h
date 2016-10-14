@@ -250,7 +250,6 @@ public:
   void handle_client_rmsnap(MDRequestRef& mdr);
   void _rmsnap_finish(MDRequestRef& mdr, CInode *diri, snapid_t snapid);
   void handle_client_renamesnap(MDRequestRef& mdr);
-  void _renamesnap_finish(MDRequestRef& mdr, CInode *diri, snapid_t snapid);
 
 
   // helpers
