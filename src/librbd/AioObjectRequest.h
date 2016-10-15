@@ -348,10 +348,6 @@ protected:
   virtual void pre_object_map_update(uint8_t *new_state) {
     *new_state = OBJECT_PENDING;
   }
-
-  virtual bool post_object_map_update() {
-    return true;
-  }
 };
 
 class AioObjectTruncate : public AbstractAioObjectWrite {
