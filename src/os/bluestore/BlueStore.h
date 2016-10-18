@@ -209,7 +209,8 @@ public:
 	boost::intrusive::list_member_hook<>,
 	&Buffer::state_item> > state_list_t;
 
-    bluestore_meta_other::map<uint64_t, std::unique_ptr<Buffer>> buffer_map;
+    mempool::bluestore_meta_other::map<uint64_t, std::unique_ptr<Buffer>>
+      buffer_map;
     Cache *cache;
 
     // we use a bare intrusive list here instead of std::map because
@@ -366,7 +367,7 @@ public:
 
     // we use a bare pointer because we don't want to affect the ref
     // count
-    bluestore_meta_other::unordered_map<uint64_t,SharedBlob*> sb_map;
+    mempool::bluestore_meta_other::unordered_map<uint64_t,SharedBlob*> sb_map;
 
     SharedBlobRef lookup(uint64_t sbid) {
       std::lock_guard<std::mutex> l(lock);
@@ -522,7 +523,7 @@ public:
 #endif
   };
   typedef boost::intrusive_ptr<Blob> BlobRef;
-  typedef bluestore_meta_other::map<int,BlobRef> blob_map_t;
+  typedef mempool::bluestore_meta_other::map<int,BlobRef> blob_map_t;
 
   /// a logical extent, pointing to (some portion of) a blob
   struct Extent : public boost::intrusive::set_base_hook<boost::intrusive::optimize_size<true>> {
@@ -602,7 +603,7 @@ public:
       bool loaded = false;   ///< true if shard is loaded
       bool dirty = false;    ///< true if shard is dirty and needs reencoding
     };
-    bluestore_meta_other::vector<Shard> shards;    ///< shards
+    mempool::bluestore_meta_other::vector<Shard> shards;    ///< shards
 
     bufferlist inline_bl;    ///< cached encoded map, if unsharded; empty=>dirty
 
@@ -1015,7 +1016,7 @@ public:
     Cache *cache;
 
     /// forward lookups
-    bluestore_meta_other::unordered_map<ghobject_t,OnodeRef> onode_map;
+    mempool::bluestore_meta_other::unordered_map<ghobject_t,OnodeRef> onode_map;
 
     OnodeSpace(Cache *c) : cache(c) {}
     ~OnodeSpace() {
@@ -1446,7 +1447,7 @@ private:
   bool mounted;
 
   RWLock coll_lock;    ///< rwlock to protect coll_map
-  bluestore_meta_other::unordered_map<coll_t, CollectionRef> coll_map;
+  mempool::bluestore_meta_other::unordered_map<coll_t, CollectionRef> coll_map;
 
   vector<Cache*> cache_shards;
 
