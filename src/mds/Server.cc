@@ -8321,8 +8321,6 @@ void Server::_rmsnap_finish(MDRequestRef& mdr, CInode *diri, snapid_t snapid)
 /* This function takes responsibility for the passed mdr*/
 void Server::handle_client_renamesnap(MDRequestRef& mdr)
 {
-  MClientRequest *req = mdr->client_request;
-
   respond_to_request(mdr, -EBADR);
 }
 
