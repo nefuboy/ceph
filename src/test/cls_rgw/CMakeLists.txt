@@ -6,12 +6,11 @@ if(${WITH_RADOSGW})
     ${UNITTEST_CXX_FLAGS})
   target_link_libraries(ceph_test_cls_rgw
     cls_rgw_client
-    librados
-    global
     ${UNITTEST_LIBS}
     ${EXTRALIBS}
     ${BLKID_LIBRARIES}
     ${CMAKE_DL_LIBS}
+    rados_a
     radostest)
   install(TARGETS
     ceph_test_cls_rgw

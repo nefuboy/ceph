@@ -5,13 +5,12 @@ set_target_properties(ceph_test_cls_lock PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(ceph_test_cls_lock
   cls_lock_client
-  librados
-  global
   ${UNITTEST_LIBS}
   ${BLKID_LIBRARIES}
   ${CMAKE_DL_LIBS}
   ${CRYPTO_LIBS}
   ${EXTRALIBS}
+  rados_a
   radostest
   )
 install(TARGETS

@@ -351,8 +351,7 @@ add_executable(test_rgw_ldap
 set_target_properties(test_rgw_ldap PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(test_rgw_ldap
-  librados
-  common
+  rados_a
   ${OPENLDAP_LIBRARIES}
   ${Boost_LIBRARIES}
   ${UNITTEST_LIBS}
@@ -364,7 +363,7 @@ endif(${WITH_RADOSGW})
 add_executable(ceph_multi_stress_watch
   multi_stress_watch.cc
   )
-target_link_libraries(ceph_multi_stress_watch librados global radostest
+target_link_libraries(ceph_multi_stress_watch librados global
   ${BLKID_LIBRARIES} ${CMAKE_DL_LIBS})
 
 #ceph_perf_local
@@ -447,10 +446,9 @@ add_executable(ceph_test_stress_watch
 set_target_properties(ceph_test_stress_watch PROPERTIES COMPILE_FLAGS
   ${UNITTEST_CXX_FLAGS})
 target_link_libraries(ceph_test_stress_watch
-  librados
-  global
-  ${UNITTEST_LIBS}
+  rados_a
   radostest
+  ${UNITTEST_LIBS}
   ${EXTRALIBS}
   ${BLKID_LIBRARIES}
   ${CMAKE_DL_LIBS}

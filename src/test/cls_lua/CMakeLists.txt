@@ -6,11 +6,10 @@ set_target_properties(ceph_test_cls_lua PROPERTIES COMPILE_FLAGS
 target_link_libraries(ceph_test_cls_lua
   cls_lua_client
   liblua
-  librados
-  global
   ${UNITTEST_LIBS}
   ${EXTRALIBS}
   ${CMAKE_DL_LIBS}
+  rados_a
   radostest
 )
 install(TARGETS
